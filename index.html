@@ -56,6 +56,8 @@ h2{font-size:1rem;color:var(--mut);margin:20px 4px 8px;text-transform:uppercase;
 <div id="vb" style="display:none"></div>
 </div>
 <canvas id="cf"></canvas>
+<script>/* Android app: keep the same player id when moving from the bundled page to the live site */try{if(window.DGNative&&DGNative.me&&!localStorage.getItem("dgme")){const i=DGNative.me();if(i)localStorage.setItem("dgme",i)}}catch(e){}</script>
+<script src="rules.js"></script>
 <script>
 const appLink=u=>(/Android/i.test(navigator.userAgent)&&u.includes("linkedin.com"))?"intent://"+u.replace("https://","")+"#Intent;scheme=https;package=com.linkedin.android;S.browser_fallback_url="+encodeURIComponent(u)+";end":u;
 // Firebase config (filled in by setup_firebase.sh). If null the app runs local-only.
@@ -360,4 +362,35 @@ const icon=cv.toDataURL("image/png");document.getElementById("ico").href=icon;do
 const m={name:"Daily Games",short_name:"Games",start_url:location.href,display:"standalone",background_color:"#fdf6ee",theme_color:"#7c5cff",icons:[{src:icon,sizes:"512x512",type:"image/png",purpose:"any maskable"}]};
 document.getElementById("mf").href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(m));
 render();connect();
-</script></body></html>
+</script><script>
+// ---------- Android app extras (moved here from native-inject.html in v1.3) (only active inside the Daily Games APK) ----------
+(function(){if(!window.DGNative)return;const N=window.DGNative;
+window.open=u=>{N.openUrl(String(u));return null};
+let sent=null;setInterval(()=>{const id=localStorage.getItem("dgme");const nm=id&&players[id]?players[id].name:"";const k=id+"|"+nm;if(id&&k!==sent){sent=k;N.setMe(id,nm)}},1000);
+const st=document.createElement("div");st.id="auto";st.style.cssText="margin:6px 0";document.querySelector(".top").after(st);
+const ago=t=>{const m=Math.round((Date.now()-t)/60000);return m<1?"just now":m<60?m+" min ago":Math.round(m/60)+" h ago"};
+function onboard(){const sdk=N.sdk();const o=sheet(`<h3>🤖 Turn on automatic scores</h3>
+<p>Daily Games can save your score by itself the moment a game shows its results screen. No screenshots, no sharing.</p>
+<ol style="padding-left:20px;line-height:1.5"><li>Tap <b>Open settings</b> below.</li><li>Find <b>Installed apps</b> (or <b>Downloaded apps</b>) and tap <b>Daily Games score reader</b>.</li><li>Switch it <b>on</b> and tap <b>Allow</b>.</li></ol>
+${sdk>=33?`<div class="box mut" style="font-size:.9rem">If the switch is greyed out or says <b>Restricted setting</b>: tap <b>App info</b> below, tap the <b>⋮</b> menu at the top right, choose <b>Allow restricted settings</b>, confirm, then come back and try again.</div>`:""}
+<div class="q"><button class="btn p" id="os">Open settings</button>${sdk>=33?`<button class="btn" id="ai">App info</button>`:""}<button class="btn" id="lt">Later</button></div>`);
+o.querySelector("#os").onclick=()=>N.openAccessibility();const ai=o.querySelector("#ai");if(ai)ai.onclick=()=>N.openAppInfo();
+o.querySelector("#lt").onclick=()=>{o.remove()};localStorage.setItem("dgonb","1")}
+function draw(){const on=N.serviceOn();let log=[];try{log=JSON.parse(N.log())}catch(e){}
+ const today=dkey(),items=log.filter(x=>x.day===today&&x.pid===me).slice(0,8);
+ st.innerHTML=`<div class="box" style="padding:10px 12px"><div class="row" style="align-items:center"><span><b>${on?"🟢 Auto-capture on":"🔴 Auto-capture off"}</b></span>${on?"":`<button class="btn p" id="aon" style="padding:6px 12px">Turn on</button>`}</div>`+
+ (items.length?`<div class="mut" style="margin-top:4px">Saved automatically today:</div>`+items.map(x=>`<div class="row"><span>${esc(x.label)} <span class="mut">· ${ago(x.ts)}</span></span><a href="#" data-u="${x.id}">Undo</a></div>`).join(""):on?`<div class="mut">Play a game and your score saves when the results screen shows.</div>`:"")+`</div>`;
+ const b=st.querySelector("#aon");if(b)b.onclick=onboard;
+ st.querySelectorAll("[data-u]").forEach(a=>a.onclick=e=>{e.preventDefault();if(confirm("Undo this auto-saved score?")){N.undo(a.dataset.u);const x=items.find(i=>i.id===a.dataset.u);if(x){const p=pd(x.day,x.pid);if(x.gid!=="songless"){delete p.sc[x.gid];delete p.done[x.gid];saveLocal();render()}}draw()}})}
+window.__dgNativeRefresh=()=>{draw();if(me&&!N.serviceOn()&&!localStorage.getItem("dgonb"))onboard()};
+
+// Live rules: parse raw game-page text the native reader couldn't, then save via the native store (dedupes).
+function runRules(){if(!window.DGRules||!N.snaps)return;let sn=[];try{sn=JSON.parse(N.snaps())}catch(e){}
+ if(!sn.length)return;const t=N.today?N.today():dkey();let any=false;
+ for(const s of sn.slice().reverse()){if(s.day!==t)continue;for(const r of DGRules.parse(s.lines||[],t)){if(N.submit(JSON.stringify(r)))any=true}}
+ N.clearSnaps();if(any)setTimeout(()=>{try{draw()}catch(e){}},500)}
+const _ref=window.__dgNativeRefresh;window.__dgNativeRefresh=()=>{try{runRules()}catch(e){}_ref()};
+setInterval(draw,5000);setTimeout(window.__dgNativeRefresh,1500);
+})();
+</script>
+</body></html>
