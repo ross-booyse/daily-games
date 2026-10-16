@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /rooms/{roomId}/{document=**} {
+      allow read, write: if roomId == "r7Kq2xV9mPz4Tn8wLc3j";
+    }
+    match /rooms/{roomId} {
+      allow read, write: if roomId == "r7Kq2xV9mPz4Tn8wLc3j";
+    }
+  }
+}
