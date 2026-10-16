@@ -59,7 +59,7 @@ h2{font-size:1rem;color:var(--mut);margin:20px 4px 8px;text-transform:uppercase;
 <script>
 const appLink=u=>(/Android/i.test(navigator.userAgent)&&u.includes("linkedin.com"))?"intent://"+u.replace("https://","")+"#Intent;scheme=https;package=com.linkedin.android;S.browser_fallback_url="+encodeURIComponent(u)+";end":u;
 // Firebase config (filled in by setup_firebase.sh). If null the app runs local-only.
-const FB_CONFIG=null;
+const FB_CONFIG={"projectId": "daily-games-ab8b6", "appId": "1:192958691402:web:00b3ac04e665322b86ceb3", "storageBucket": "daily-games-ab8b6.firebasestorage.app", "apiKey": "AIzaSyAodXeSwl4-FhmzHVVSmMpF4OetsOk3fEQ", "authDomain": "daily-games-ab8b6.firebaseapp.com", "messagingSenderId": "192958691402", "projectNumber": "192958691402", "version": "2"};
 const ROOM="r7Kq2xV9mPz4Tn8wLc3j";
 // kind: time (seconds, lower better) | guess (lower better) | mist (mistakes, lower better)
 const G=[

@@ -2,7 +2,7 @@
 # Run after accepting Firebase terms at https://console.firebase.google.com
 set -e; export PATH=$HOME/.local/bin:$PATH; cd "$(dirname "$0")"
 ID=${1:-daily-games-rb-$(printf %04d $((RANDOM%10000)))}
-firebase projects:create "$ID" -n "Daily Games"
+true
 firebase apps:create WEB "Daily Games" --project "$ID"
 APP=$(firebase apps:list WEB --project "$ID" --json | python3 -c "import json,sys;print(json.load(sys.stdin)['result'][0]['appId'])")
 CFG=$(firebase apps:sdkconfig WEB "$APP" --project "$ID" --json | python3 -c "import json,sys;print(json.dumps(json.load(sys.stdin)['result']['sdkConfig']))")
