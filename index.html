@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Daily Games</title>
+<meta name="theme-color" content="#7c5cff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Daily Games">
+<link rel="icon" id="ico"><link rel="apple-touch-icon" id="aico"><link rel="manifest" id="mf">
+<style>
+:root{--bg:#fdf6ee;--card:#fff;--ink:#222;--mut:#888;--acc:#7c5cff;--ok:#2bb673;--sh:0 3px 0 rgba(0,0,0,.08)}
+.dark{--bg:#15141c;--card:#22212c;--ink:#eee;--mut:#999;--sh:0 3px 0 rgba(0,0,0,.4)}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);transition:background .3s}
+.wrap{max-width:560px;margin:auto;padding:16px 16px 40px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:1.6rem;margin:8px 0}.small{border:0;background:var(--card);color:var(--ink);border-radius:12px;padding:8px 12px;font-size:1rem;box-shadow:var(--sh);cursor:pointer}
+.prog{margin:8px 0 4px;font-weight:700}.bar{height:12px;background:var(--card);border-radius:8px;overflow:hidden;box-shadow:var(--sh)}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--acc),#ff6fb5);transition:width .4s}
+#next{width:100%;margin:14px 0 4px;padding:14px;border:0;border-radius:16px;background:var(--acc);color:#fff;font-size:1.1rem;font-weight:700;box-shadow:0 4px 0 #5a3fd6;cursor:pointer}
+#next:active{transform:translateY(2px);box-shadow:0 2px 0 #5a3fd6}
+h2{font-size:1rem;color:var(--mut);margin:20px 4px 8px;text-transform:uppercase;letter-spacing:.05em}
+.card{display:flex;align-items:center;gap:12px;background:var(--card);border-radius:16px;padding:14px;margin:8px 0;box-shadow:var(--sh);border-left:6px solid var(--c)}
+.card a{flex:1;display:flex;align-items:center;gap:12px;color:inherit;text-decoration:none;font-size:1.15rem;font-weight:600;min-height:40px}
+.emo{font-size:1.6rem}.card.done a{opacity:.45;text-decoration:line-through}
+.tick{width:40px;height:40px;border-radius:50%;border:3px solid var(--mut);background:none;color:#fff;font-size:1.2rem;cursor:pointer;flex:none}
+.done .tick{background:var(--ok);border-color:var(--ok)}
+.all{text-align:center;font-size:1.2rem;margin:16px 0;display:none}
+</style></head><body>
+<div class="wrap">
+<header><h1>🎮 Daily Games</h1><div><button class="small" id="dm" title="Dark mode">🌙</button> <button class="small" id="reset" title="Reset">↺</button></div></header>
+<div class="prog" id="prog"></div><div class="bar"><i id="fill"></i></div>
+<button id="next"></button>
+<div class="all" id="all">🎉 All done for today! See you tomorrow.</div>
+<div id="list"></div>
+</div>
+<script>
+const G=[
+["LinkedIn games","#0a66c2",[["Wend","https://www.linkedin.com/games/wend/","🌀"],["Zip","https://www.linkedin.com/games/zip/","⚡"],["Patches","https://www.linkedin.com/games/patches/","🧩"],["Sudoku","https://www.linkedin.com/games/mini-sudoku/","🔢"],["Tango","https://www.linkedin.com/games/tango/","🌗"],["Queens","https://www.linkedin.com/games/queens/","👑"],["Crossclimb","https://www.linkedin.com/games/crossclimb/","🪜"],["Pinpoint","https://www.linkedin.com/games/pinpoint/","📍"]]],
+["NYT","#b19cd9",[["Connections","https://www.nytimes.com/games/connections","🔗"],["Wordle","https://www.nytimes.com/games/wordle/index.html","🟩"]]],
+["Globle","#2bb673",[["Globle","https://globle-game.com/game","🌍"]]],
+["Songless","#ff6fb5",[["Songless","https://lessgames.com/songless","🎵"]]],
+["Krillion","#ff9f1c",[["Krillion","https://krillion.io/","🦐"]]]];
+const all=G.flatMap(g=>g[2].map(x=>x[1]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+(d.getMonth()+1)+"-"+d.getDate()};
+let st=JSON.parse(localStorage.getItem("dg")||"{}");if(st.day!==today())st={day:today(),done:{}};
+const save=()=>localStorage.setItem("dg",JSON.stringify(st));
+function render(){if(st.day!==today())st={day:today(),done:{}};
+ const L=document.getElementById("list");L.innerHTML="";
+ G.forEach(([t,c,gs])=>{const h=document.createElement("h2");h.textContent=t;L.append(h);
+  gs.forEach(([n,u,e])=>{const d=document.createElement("div");d.className="card"+(st.done[u]?" done":"");d.style.setProperty("--c",c);
+   d.innerHTML=`<a href="${u}" target="_blank" rel="noopener"><span class="emo">${e}</span>${n}</a><button class="tick" aria-label="Tick ${n}">${st.done[u]?"✓":""}</button>`;
+   d.querySelector("a").onclick=()=>{st.done[u]=1;save();setTimeout(render,50)};
+   d.querySelector(".tick").onclick=()=>{st.done[u]?delete st.done[u]:st.done[u]=1;save();render()};L.append(d)})});
+ const n=all.filter(u=>st.done[u]).length;document.getElementById("prog").textContent=`${n}/${all.length} done`;
+ document.getElementById("fill").style.width=(100*n/all.length)+"%";
+ const nx=G.flatMap(g=>g[2]).find(x=>!st.done[x[1]]);const b=document.getElementById("next");
+ b.style.display=nx?"block":"none";document.getElementById("all").style.display=nx?"none":"block";
+ if(nx){b.textContent=`▶ Next up: ${nx[0]}`;b.onclick=()=>{window.open(nx[1],"_blank","noopener");st.done[nx[1]]=1;save();render()}}}
+document.getElementById("reset").onclick=()=>{if(confirm("Reset today's ticks?")){st.done={};save();render()}};
+const dm=document.getElementById("dm");let dark=localStorage.getItem("dgdark");dark=dark===null?matchMedia("(prefers-color-scheme: dark)").matches:dark==="1";
+const ap=()=>{document.documentElement.classList.toggle("dark",dark);dm.textContent=dark?"☀️":"🌙"};ap();
+dm.onclick=()=>{dark=!dark;localStorage.setItem("dgdark",dark?"1":"0");ap()};
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)render()});setInterval(render,60000);
+// icon + manifest
+const cv=document.createElement("canvas");cv.width=cv.height=512;const x=cv.getContext("2d");
+const gr=x.createLinearGradient(0,0,512,512);gr.addColorStop(0,"#7c5cff");gr.addColorStop(1,"#ff6fb5");x.fillStyle=gr;
+x.beginPath();x.roundRect(0,0,512,512,110);x.fill();x.font="300px sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText("🎮",256,280);
+const icon=cv.toDataURL("image/png");document.getElementById("ico").href=icon;document.getElementById("aico").href=icon;
+const m={name:"Daily Games",short_name:"Games",start_url:location.href,display:"standalone",background_color:"#fdf6ee",theme_color:"#7c5cff",icons:[{src:icon,sizes:"512x512",type:"image/png",purpose:"any maskable"}]};
+document.getElementById("mf").href="data:application/manifest+json,"+encodeURIComponent(JSON.stringify(m));
+render();
+</script></body></html>
