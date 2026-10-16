@@ -33,7 +33,7 @@ h2{font-size:1rem;color:var(--mut);margin:20px 4px 8px;text-transform:uppercase;
 <div id="list"></div>
 </div>
 <script>
-const L=u=>(/Android/i.test(navigator.userAgent)&&u.includes("linkedin.com"))?"intent://"+u.replace("https://","")+"#Intent;scheme=https;package=com.linkedin.android;S.browser_fallback_url="+encodeURIComponent(u)+";end":u;
+const appLink=u=>(/Android/i.test(navigator.userAgent)&&u.includes("linkedin.com"))?"intent://"+u.replace("https://","")+"#Intent;scheme=https;package=com.linkedin.android;S.browser_fallback_url="+encodeURIComponent(u)+";end":u;
 const G=[
 ["LinkedIn games","#0a66c2",[["Wend","https://www.linkedin.com/games/wend/","🌀"],["Zip","https://www.linkedin.com/games/zip/","⚡"],["Patches","https://www.linkedin.com/games/patches/","🧩"],["Sudoku","https://www.linkedin.com/games/mini-sudoku/","🔢"],["Tango","https://www.linkedin.com/games/tango/","🌗"],["Queens","https://www.linkedin.com/games/queens/","👑"],["Crossclimb","https://www.linkedin.com/games/crossclimb/","🪜"],["Pinpoint","https://www.linkedin.com/games/pinpoint/","📍"]]],
 ["NYT","#b19cd9",[["Connections","https://www.nytimes.com/games/connections","🔗"],["Wordle","https://www.nytimes.com/games/wordle/index.html","🟩"]]],
@@ -48,14 +48,14 @@ function render(){if(st.day!==today())st={day:today(),done:{}};
  const L=document.getElementById("list");L.innerHTML="";
  G.forEach(([t,c,gs])=>{const h=document.createElement("h2");h.textContent=t;L.append(h);
   gs.forEach(([n,u,e])=>{const d=document.createElement("div");d.className="card"+(st.done[u]?" done":"");d.style.setProperty("--c",c);
-   d.innerHTML=`<a href="${L(u)}" target="_blank" rel="noopener"><span class="emo">${e}</span>${n}</a><button class="tick" aria-label="Tick ${n}">${st.done[u]?"✓":""}</button>`;
+   d.innerHTML=`<a href="${appLink(u)}" target="_blank" rel="noopener"><span class="emo">${e}</span>${n}</a><button class="tick" aria-label="Tick ${n}">${st.done[u]?"✓":""}</button>`;
    d.querySelector("a").onclick=()=>{st.done[u]=1;save();setTimeout(render,50)};
    d.querySelector(".tick").onclick=()=>{st.done[u]?delete st.done[u]:st.done[u]=1;save();render()};L.append(d)})});
  const n=all.filter(u=>st.done[u]).length;document.getElementById("prog").textContent=`${n}/${all.length} done`;
  document.getElementById("fill").style.width=(100*n/all.length)+"%";
  const nx=G.flatMap(g=>g[2]).find(x=>!st.done[x[1]]);const b=document.getElementById("next");
  b.style.display=nx?"block":"none";document.getElementById("all").style.display=nx?"none":"block";
- if(nx){b.textContent=`▶ Next up: ${nx[0]}`;b.onclick=()=>{window.open(L(nx[1]),"_blank","noopener");st.done[nx[1]]=1;save();render()}}}
+ if(nx){b.textContent=`▶ Next up: ${nx[0]}`;b.onclick=()=>{window.open(appLink(nx[1]),"_blank","noopener");st.done[nx[1]]=1;save();render()}}}
 document.getElementById("reset").onclick=()=>{if(confirm("Reset today's ticks?")){st.done={};save();render()}};
 const dm=document.getElementById("dm");let dark=localStorage.getItem("dgdark");dark=dark===null?matchMedia("(prefers-color-scheme: dark)").matches:dark==="1";
 const ap=()=>{document.documentElement.classList.toggle("dark",dark);dm.textContent=dark?"☀️":"🌙"};ap();
