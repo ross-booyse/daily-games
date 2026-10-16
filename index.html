@@ -66,9 +66,10 @@ const G=[
 ["LinkedIn games","#0a66c2",[["Wend","https://www.linkedin.com/games/wend/","🌀","wend","time"],["Zip","https://www.linkedin.com/games/zip/","⚡","zip","time"],["Patches","https://www.linkedin.com/games/patches/","🧩","patches","time"],["Sudoku","https://www.linkedin.com/games/mini-sudoku/","🔢","sudoku","time"],["Tango","https://www.linkedin.com/games/tango/","🌗","tango","time"],["Queens","https://www.linkedin.com/games/queens/","👑","queens","time"],["Crossclimb","https://www.linkedin.com/games/crossclimb/","🪜","crossclimb","time"],["Pinpoint","https://www.linkedin.com/games/pinpoint/","📍","pinpoint","guess"]]],
 ["NYT","#b19cd9",[["Connections","https://www.nytimes.com/games/connections","🔗","connections","mist"],["Wordle","https://www.nytimes.com/games/wordle/index.html","🟩","wordle","guess"]]],
 ["Globle","#2bb673",[["Globle","https://globle-game.com/game","🌍","globle","guess"]]],
-["Songless","#ff6fb5",[["Songless","https://lessgames.com/songless","🎵","songless","guess"]]],
-["Krillion","#ff9f1c",[["Krillion","https://krillion.io/","🦐","krillion","guess"]]]];
+["Songless","#ff6fb5",[["Songless","https://lessgames.com/songless","🎵","songless","rounds"]]],
+["Krillion","#ff9f1c",[["Krillion","https://krillion.io/","🦐","krillion","pts"]]]];
 const GAMES=G.flatMap(g=>g[2].map(x=>({n:x[0],u:x[1],e:x[2],id:x[3],k:x[4],c:g[1]})));
+GAMES.forEach(g=>{if(g.k==="pts")g.hb=1});
 const GM=Object.fromEntries(GAMES.map(g=>[g.id,g]));
 const pad=n=>String(n).padStart(2,"0");
 const dkey=(d=new Date())=>d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate());
@@ -87,7 +88,7 @@ function parseScore(gid,txt){
   const solved=rows.filter(r=>r.every(c=>c===r[0])).length,mist=rows.length-solved;
   return solved<4?{f:1,v:mist,raw:t}:{v:mist,raw:t}}
  if(gid==="globle"){const m=t.match(/=\s*(\d+)/)||t.match(/in\s+(\d+)\s+(tries|guesses|guess|try)/i)||t.match(/(\d+)\s+(tries|guesses)/i);if(m)return {v:+m[1],raw:t}}
- if(gid==="songless"){const m=t.match(/(\d+)\s*\/\s*\d+/)||t.match(/(?:in|attempt)\s+(\d+)/i);if(m)return {v:+m[1],raw:t};
+ if(gid==="songless"){const so=t.match(/solved\s*in\W{0,4}([1-6xX×])/i);if(so)return /[1-6]/.test(so[1])?{v:+so[1],raw:t}:{v:6,x:1,raw:t};const m=t.match(/(\d+)\s*\/\s*\d+/)||t.match(/(?:in|attempt)\s+(\d+)/i);if(m)return {v:+m[1],raw:t};
   const sq=Array.from(t).filter(c=>"🟩🟥⬛⬜🟨🟧".includes(c));if(sq.length){const i=sq.indexOf("🟩");return i<0?{f:1,raw:t}:{v:i+1,raw:t}}}
  if(gid==="pinpoint"){const m=t.match(/(\d)\s*\/\s*5/)||t.match(/(\d+)\s*guess/i);if(m)return {v:+m[1],raw:t};
   if(/📌/u.test(t)){const ar=Array.from(t),i=ar.indexOf("📌");return {v:ar.slice(0,i).filter(c=>c==="🤔").length+1,raw:t}}
@@ -99,9 +100,9 @@ function parseScore(gid,txt){
  return null}
 const fmt=(gid,s)=>{if(!s)return "–";if(s.f)return "❌";const k=GM[gid].k;
  if(k==="time")return Math.floor(s.v/60)+":"+pad(s.v%60)+(s.fl?" ✨":"");
- if(k==="mist")return s.v+" mist.";return s.v+(s.v==1?" guess":" guesses")};
+ if(k==="mist")return s.v+" mist.";if(k==="pts")return s.v+" pts";if(k==="rounds")return s.v+(s.r&&s.r.length?" ("+s.r.map(x=>x>=6?"X":x).join("+")+")":"");return s.v+(s.v==1?" guess":" guesses")};
 // compare: negative = a better
-const cmp=(a,b)=>{if(a.f&&b.f)return 0;if(a.f)return 1;if(b.f)return -1;return a.v-b.v||((b.fl||0)-(a.fl||0))};
+const cmp=(a,b,gid)=>{if(a.f&&b.f)return 0;if(a.f)return 1;if(b.f)return -1;return (gid&&GM[gid].hb?b.v-a.v:a.v-b.v)||((b.fl||0)-(a.fl||0))};
 
 // ---------- state ----------
 let players=JSON.parse(localStorage.getItem("dgplayers")||"null")||{ross:{name:"Ross",o:0},michaela:{name:"Michaela",o:1}};
@@ -129,8 +130,8 @@ async function savePlayers(){saveLocal();render();if(!db)return;const {doc,setDo
 // ---------- scoring ----------
 function dayResult(k){const ps=plist(),res={},wins={},doneN={};
  ps.forEach(p=>{wins[p.id]=0;doneN[p.id]=Object.keys(pd(k,p.id).done||{}).filter(g=>GM[g]).length});
- GAMES.forEach(g=>{const e=ps.map(p=>({id:p.id,s:(pd(k,p.id).sc||{})[g.id]})).filter(x=>x.s).sort((a,b)=>cmp(a.s,b.s));
-  e.forEach((x,i)=>x.place=i&&cmp(e[i-1].s,x.s)===0?e[i-1].place:i+1);
+ GAMES.forEach(g=>{const e=ps.map(p=>({id:p.id,s:(pd(k,p.id).sc||{})[g.id]})).filter(x=>x.s).sort((a,b)=>cmp(a.s,b.s,g.id));
+  e.forEach((x,i)=>x.place=i&&cmp(e[i-1].s,x.s,g.id)===0?e[i-1].place:i+1);
   if(e.length>1||(e.length===1&&ps.length===1))e.filter(x=>x.place===1&&!x.s.f).forEach(x=>wins[x.id]++);
   res[g.id]=e});
  const ord=ps.map(p=>p.id).sort((a,b)=>wins[b]-wins[a]||doneN[b]-doneN[a]);
@@ -149,7 +150,9 @@ function badges(pid){const k=dkey(),sc=pd(k,pid).sc||{},b=[],st=stats(pid);
  if(sc.wordle&&!sc.wordle.f&&sc.wordle.v<=2)b.push("🎯 Wordle in "+sc.wordle.v);
  if(sc.connections&&!sc.connections.f&&sc.connections.v===0)b.push("🔗 Perfect Connections");
  if(sc.globle&&!sc.globle.f&&sc.globle.v<=3)b.push("🌍 Globle in "+sc.globle.v);
- if(sc.songless&&!sc.songless.f&&sc.songless.v===1)b.push("🎵 Songless first try");
+ if(sc.songless&&sc.songless.r&&sc.songless.r.includes(1))b.push("🎵 Songless first try");
+ if(sc.songless&&sc.songless.r&&sc.songless.r.length===3&&sc.songless.v<=6)b.push("🎶 Songless maestro");
+ if(sc.krillion&&!sc.krillion.f&&sc.krillion.v>=250)b.push("🦐 Krillion "+sc.krillion.v);
  if(sc.queens&&!sc.queens.f&&sc.queens.v<=30)b.push("👑 Speedy Queens");
  if(st.winStreak>=3)b.push("🔥 "+st.winStreak+"-day winner");
  if(st.all>=7)b.push("📅 7-day finisher");else if(st.all>=3)b.push("📅 "+st.all+"-day finisher");
@@ -199,24 +202,110 @@ function board(){const k=dkey(),r=dayResult(k),ps=plist(),medal=["🥇","🥈","
 
 // ---------- sheets ----------
 function sheet(html){const o=document.createElement("div");o.className="ov";o.innerHTML=`<div class="sheet">${html}</div>`;o.onclick=e=>{if(e.target===o)o.remove()};document.body.append(o);return o}
+// ---------- screenshot scoring ----------
+const REG_DEF={time:[.08,.09,.92,.27],pinpoint:[.04,.11,.96,.25],globle:[.08,.34,.95,.40],krillion:[.02,.18,.34,.29],songless:[.22,.37,.50,.47],wordle:[.02,.17,.98,.72],connections:[.25,.58,.75,.78]};
+const regFor=gid=>{const u=JSON.parse(localStorage.getItem("dgreg")||"{}");return u[gid]||REG_DEF[gid]||REG_DEF[GM[gid].k]||REG_DEF.time};
+const setReg=(gid,r)=>{const u=JSON.parse(localStorage.getItem("dgreg")||"{}");u[gid]=r;localStorage.setItem("dgreg",JSON.stringify(u))};
+const loadImg=src=>new Promise((ok,no)=>{const i=new Image();i.onload=()=>ok(i);i.onerror=no;i.src=src});
+function cropCanvas(img,r,scale){const W=img.naturalWidth,H=img.naturalHeight,x=r[0]*W,y=r[1]*H,w=(r[2]-r[0])*W,h=(r[3]-r[1])*H;
+ const c=document.createElement("canvas");c.width=Math.max(1,Math.round(w*scale));c.height=Math.max(1,Math.round(h*scale));
+ const cx=c.getContext("2d",{willReadFrequently:true});cx.imageSmoothingQuality="high";cx.drawImage(img,x,y,w,h,0,0,c.width,c.height);return c}
+// greyscale + contrast stretch + threshold, always dark text on light background
+function prep(img,r,inv,tw){const sc=Math.min(3,Math.max(.3,(tw||700)/((r[2]-r[0])*img.naturalWidth)));const c=cropCanvas(img,r,sc),cx=c.getContext("2d"),d=cx.getImageData(0,0,c.width,c.height),p=d.data;
+ const g=new Uint8Array(p.length/4),hist=new Array(256).fill(0);
+ for(let i=0;i<g.length;i++){g[i]=Math.round(.299*p[i*4]+.587*p[i*4+1]+.114*p[i*4+2]);hist[g[i]]++}
+ // Otsu threshold
+ let sum=0;for(let i=0;i<256;i++)sum+=i*hist[i];let sB=0,wB=0,best=0,th=128;
+ for(let i=0;i<256;i++){wB+=hist[i];if(!wB)continue;const wF=g.length-wB;if(!wF)break;sB+=i*hist[i];const mB=sB/wB,mF=(sum-sB)/wF,v=wB*wF*(mB-mF)**2;if(v>best){best=v;th=i}}
+ let light=0;for(const v of g)if(v>th)light++;const textLight=(light<g.length/2)!==!!inv;
+ for(let i=0;i<g.length;i++){let on=g[i]>th;if(textLight)on=!on;const v=on?255:0;p[i*4]=p[i*4+1]=p[i*4+2]=v;p[i*4+3]=255}
+ cx.putImageData(d,0,0);const P=40,o=document.createElement("canvas");o.width=c.width+2*P;o.height=c.height+2*P;const ox=o.getContext("2d");ox.fillStyle="#fff";ox.fillRect(0,0,o.width,o.height);ox.drawImage(c,P,P);return o}
+// tile-grid colour analysis (Wordle, Connections)
+function gridRows(img,r,cols){const c=cropCanvas(img,r,Math.min(1,400/((r[2]-r[0])*img.naturalWidth))),W=c.width,H=c.height,d=c.getContext("2d").getImageData(0,0,W,H).data;
+ const px=(x,y)=>{const i=(y*W+x)*4;return [d[i],d[i+1],d[i+2]]};const bg=px(1,1);
+ const dist=(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]);
+ const isTile=q=>dist(q,bg)>35&&!(q[0]>225&&q[1]>225&&q[2]>225)&&!(q[0]<35&&q[1]<35&&q[2]<35&&bg[0]>200);
+ const rowFrac=[];for(let y=0;y<H;y++){let n=0;for(let x=0;x<W;x++)if(isTile(px(x,y)))n++;rowFrac.push(n/W)}
+ const bands=[];let st=-1;for(let y=0;y<=H;y++){const on=y<H&&rowFrac[y]>.3;if(on&&st<0)st=y;if(!on&&st>=0){if(y-st>=Math.max(4,H*.03))bands.push([st,y]);st=-1}}
+ return bands.map(([y0,y1])=>{const ys=Math.round(y0+(y1-y0)*.18);let x0=-1,x1=-1;for(let x=0;x<W;x++)if(isTile(px(x,ys))){if(x0<0)x0=x;x1=x}
+  const tw=(x1-x0)/cols,tiles=[];for(let i=0;i<cols;i++){let a=[0,0,0],n=0;for(let dx=-2;dx<=2;dx++)for(let dy=-1;dy<=1;dy++){const q=px(Math.round(x0+tw*(i+.5)+dx*tw*.08),ys+dy);a[0]+=q[0];a[1]+=q[1];a[2]+=q[2];n++}tiles.push(a.map(v=>v/n))}
+  return tiles})}
+const isGreen=t=>t[1]>t[0]+20&&t[1]>t[2]+20;
+function analyseGrid(gid,img,r){const rows=gridRows(img,r,gid==="wordle"?5:4);if(rows.length<(gid==="wordle"?1:4))return null;
+ if(gid==="wordle"){const solved=rows.findIndex(rw=>rw.every(isGreen));if(solved>=0)return {v:solved+1,how:`${rows.length} rows, row ${solved+1} all green`};
+  return rows.length>=6?{f:1,how:"6 rows, none all green"}:null}
+ const same=rw=>Math.max(...rw.map(a=>Math.max(...rw.map(b=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2])))))<45;
+ const mist=rows.filter(rw=>!same(rw)).length,solvedN=rows.length-mist;
+ return mist>=4||solvedN<4&&rows.length>=4&&mist>=4?{f:1,v:mist,how:`${mist} mixed rows`}:{v:mist,how:`${rows.length} rows, ${mist} mixed`}}
+let TESS=null;
+async function ocr(canvas,psm){if(!window.Tesseract)await new Promise((ok,no)=>{const sc=document.createElement("script");sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js";sc.onload=ok;sc.onerror=no;document.head.append(sc)});
+ TESS??=Tesseract.createWorker("eng");const w=await TESS;let out="";for(const m of [psm||"11"]){await w.setParameters({tessedit_pageseg_mode:m});out+=(await w.recognize(canvas)).data.text+"\n"}return out}
+const fixOcr=t=>t.replace(/[Oo](?=\d|:)/g,"0").replace(/(?<=\d|:)[Oo]/g,"0").replace(/(?<=\d)[lI|](?=\d)/g,"1").replace(/(\d)\s*[.;,]\s*(\d{2})\b/g,"$1:$2");
+function ocrParse(gid,t,whole){t=fixOcr(t);const k=GM[gid].k,fl=/no\s*hints|no\s*mistakes|flawless/i.test(t)?1:0;
+ if(gid==="pinpoint"){const m=t.match(/(\d)\s*guess/i)||(!whole&&t.match(/\b([1-5])\b/));return m?{v:+m[1]}:null}
+ if(k==="time"){t=t.replace(/avg\W{0,3}\d{1,2}:\d{2}/gi,"");const m=t.match(/\b(\d{1,2}):(\d{2})\b/);return m?{v:+m[1]*60+ +m[2],fl}:null}
+ if(gid==="globle"){const m=t.match(/today.?s\s*guesses[^\d]{0,8}(\d{1,3})/i)||(!whole&&t.match(/(\d{1,3})\s*$/));return m?{v:+m[1]}:null}
+ if(gid==="songless"){const m=t.match(/solved\s*[il1]n\W{0,6}(?:average\W{0,6})?([1-6]|[xX×])\b/i)||(!whole&&t.match(/\b([1-6xX])\b/));return m?(/\d/.test(m[1])?{v:+m[1]}:{v:6,x:1}):null}
+ if(gid==="krillion"){if(whole)return null;const ns=(t.match(/\d{2,5}/g)||[]).map(Number);return ns.length?{v:whole?ns[0]:Math.max(...ns)}:null}
+ if(gid==="connections"&&/perfect/i.test(t))return {v:0};
+ return null}
+async function readShot(gid,img,r,log){
+ if(gid==="wordle"||gid==="connections"){const g=analyseGrid(gid,img,r)||analyseGrid(gid,img,[0,0,1,1]);if(g){log("Tiles: "+g.how);return g}
+  if(gid==="wordle")return null}
+ log("Reading the score area…");let t="",s=null;
+ for(const [inv,psm] of gid==="krillion"?[[0,"8"],[0,"7"]]:[[0,"11"],[1,"11"],[0,"6"],[1,"6"]]){t+=await ocr(prep(img,r,inv),psm)+"\n";s=ocrParse(gid,t,false);if(s&&(GM[gid].k!=="time"||s.fl||inv))break}
+ if(!s){log("Reading the whole screenshot…");const w=[0,.05,1,1];t=await ocr(prep(img,w,0),"11")+"\n"+await ocr(prep(img,w,1),"11");s=ocrParse(gid,t,true)}
+ return s}
+
 function scoreSheet(gid){const g=GM[gid],k=g.k,cur=(pd(dkey(),me).sc||{})[gid];
- const quick=k==="time"?"":k==="mist"?[0,1,2,3].map(n=>`<button data-v="${n}">${n} mist.</button>`).join(""):[1,2,3,4,5,6].map(n=>`<button data-v="${n}">${n}</button>`).join("");
- const o=sheet(`<h3>${g.e} ${g.n} score</h3><div class="mut">Paste the share text, or enter it yourself.</div>
- <textarea id="sp" rows="4" placeholder="Paste share text here"></textarea><div id="pv" class="mut"></div>
- <div class="mut">${k==="time"?"Time (m:ss or seconds)":k==="mist"?"Mistakes":"Guesses"}</div>
- <input type="text" id="sm" inputmode="numeric" placeholder="${k==="time"?"e.g. 0:45":"e.g. 3"}">
+ let rounds=k==="rounds"&&cur&&cur.r?[...cur.r]:[];
+ const quick=k==="time"?"":k==="pts"?"":k==="mist"?[0,1,2,3].map(n=>`<button data-v="${n}">${n} mist.</button>`).join(""):[1,2,3,4,5,6].map(n=>`<button data-v="${n}">${n}</button>`).join("");
+ const lbl=k==="time"?"Time (m:ss or seconds)":k==="mist"?"Mistakes":k==="pts"?"Score (higher is better)":k==="rounds"?"Add a round: solved in (1–6, X counts 6)":"Guesses";
+ const o=sheet(`<h3>${g.e} ${g.n} score</h3>
+ <div class="q"><button class="btn p" id="up">📷 Upload screenshot</button><input type="file" id="fi" accept="image/*" hidden></div>
+ <div id="shot" style="display:none"><div class="mut">Drag a box around the score if it reads wrong. It'll be remembered.</div>
+  <div style="position:relative;touch-action:none;margin:6px 0"><canvas id="cv" style="width:100%;border-radius:10px;display:block"></canvas></div>
+  <div class="q"><button class="btn" id="rr">🔍 Read again</button><button class="btn" id="rd">↺ Default area</button></div></div>
+ <div id="ost" class="mut"></div>
+ ${k==="rounds"?`<div id="rds" class="box"></div>`:""}
+ <textarea id="sp" rows="3" placeholder="…or paste the share text"></textarea><div id="pv" class="mut"></div>
+ <div class="mut">${lbl}</div>
+ <input type="text" id="sm" inputmode="numeric" placeholder="${k==="time"?"e.g. 0:45":k==="pts"?"e.g. 265":"e.g. 3"}">
  ${k==="time"?`<label><input type="checkbox" id="sfl"> ✨ Flawless / no hints</label>`:""}
- <div class="q">${quick}<button data-v="X">❌ Failed</button></div>
- <div class="q"><button class="btn p" id="ok">Save</button>${cur?`<button class="btn" id="clr">Clear score</button>`:""}<button class="btn" id="cn">Cancel</button></div>`);
- const sp=o.querySelector("#sp"),sm=o.querySelector("#sm"),fl=o.querySelector("#sfl"),pv=o.querySelector("#pv");
- const get=()=>{let s=parseScore(gid,sp.value)||parseScore(gid,sm.value);if(s&&fl&&fl.checked)s.fl=1;return s};
- const up=()=>{const s=get();pv.textContent=s?"→ "+fmt(gid,s):(sp.value||sm.value)?"Couldn't read that, try entering it manually":""};
+ <div class="q">${quick}<button data-v="X">❌ ${k==="rounds"?"X":"Failed"}</button></div>
+ <div class="q"><button class="btn p" id="ok">${k==="rounds"?"Add round":"Save"}</button>${k==="rounds"?`<button class="btn p" id="okr">Save rounds</button>`:""}${cur?`<button class="btn" id="clr">Clear score</button>`:""}<button class="btn" id="cn">Cancel</button></div>`);
+ const q=x=>o.querySelector(x),sp=q("#sp"),sm=q("#sm"),fl=q("#sfl"),pv=q("#pv"),ost=q("#ost");
+ const drawR=()=>{if(k!=="rounds")return;q("#rds").innerHTML=`<b>Today's rounds (${rounds.length}/3):</b> ${rounds.length?rounds.map((x,i)=>`<span class="chip">${["All","Rock","Hip hop"][i]||"#"+(i+1)}: ${x>=6?"X":x} <a href="#" data-del="${i}">✕</a></span>`).join(""):"none yet"}${rounds.length?` → total <b>${rounds.reduce((a,b)=>a+b,0)}</b>`:""}`;
+  o.querySelectorAll("[data-del]").forEach(a=>a.onclick=e=>{e.preventDefault();rounds.splice(+a.dataset.del,1);drawR()})};drawR();
+ const toS=s=>{if(!s)return s;if(s.f&&k==="rounds")return {v:6};return s};
+ const get=()=>{let s=toS(parseScore(gid,sp.value)||parseScore(gid,sm.value));if(s&&fl&&fl.checked)s.fl=1;return s};
+ const up=()=>{const s=get();pv.textContent=s?"→ "+(k==="rounds"?(s.v>=6?"X":s.v):fmt(gid,s)):(sp.value||sm.value)?"Couldn't read that, try entering it manually":""};
  sp.oninput=sm.oninput=up;if(fl)fl.onchange=up;
- const commit=s=>{if(!s)return up();delete s.raw;write(dkey(),me,gid,1,s);o.remove()};
- o.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>commit(b.dataset.v==="X"?{f:1}:{v:+b.dataset.v}));
- o.querySelector("#ok").onclick=()=>commit(get());o.querySelector("#cn").onclick=()=>o.remove();
- const c=o.querySelector("#clr");if(c)c.onclick=async()=>{const p=pd(dkey(),me);delete p.sc[gid];saveLocal();render();o.remove();
-  if(db){const {doc,setDoc,deleteField}=fs;try{await setDoc(doc(db,"rooms",ROOM,"days",dkey()),{[me]:{sc:{[gid]:deleteField()}}},{merge:true})}catch(e){}}}}
+ const saveRounds=()=>{if(!rounds.length)return;write(dkey(),me,gid,1,{v:rounds.reduce((a,b)=>a+b,0),r:rounds.slice(0,3)});o.remove()};
+ const commit=s=>{if(!s)return up();delete s.raw;delete s.x;
+  if(k==="rounds"){if(rounds.length>=3){ost.textContent="Already 3 rounds. Remove one first.";return}rounds.push(Math.min(6,s.v||6));drawR();sp.value=sm.value="";pv.textContent="";ost.textContent=rounds.length===3?"All 3 rounds in. Tap Save rounds.":"Round added. Add another or tap Save rounds.";return}
+  write(dkey(),me,gid,1,s);o.remove()};
+ o.querySelectorAll("[data-v]").forEach(b=>b.onclick=()=>commit(b.dataset.v==="X"?(k==="rounds"?{v:6}:{f:1}):{v:+b.dataset.v}));
+ q("#ok").onclick=()=>commit(get());q("#cn").onclick=()=>o.remove();if(q("#okr"))q("#okr").onclick=saveRounds;
+ const c=q("#clr");if(c)c.onclick=async()=>{const p=pd(dkey(),me);delete p.sc[gid];saveLocal();render();o.remove();
+  if(db){const {doc,setDoc,deleteField}=fs;try{await setDoc(doc(db,"rooms",ROOM,"days",dkey()),{[me]:{sc:{[gid]:deleteField()}}},{merge:true})}catch(e){}}};
+ // screenshot
+ let img=null,reg=regFor(gid),drag=null;const cv=q("#cv");
+ const draw=()=>{if(!img)return;const W=cv.width=Math.min(img.naturalWidth,900),H=cv.height=Math.round(W*img.naturalHeight/img.naturalWidth),x=cv.getContext("2d");
+  x.drawImage(img,0,0,W,H);x.fillStyle="rgba(0,0,0,.45)";const [a,b,c2,d2]=reg.map((v,i)=>v*(i%2?H:W));
+  x.fillRect(0,0,W,b);x.fillRect(0,d2,W,H-d2);x.fillRect(0,b,a,d2-b);x.fillRect(c2,b,W-c2,d2-b);x.strokeStyle="#ff6fb5";x.lineWidth=Math.max(3,W/150);x.strokeRect(a,b,c2-a,d2-b)};
+ const run=async()=>{ost.textContent="";const log=m=>ost.textContent=m;try{const s=await readShot(gid,img,reg,log);
+  if(!s){log("Couldn't find the score. Drag a box around it, or type it below.");return}
+  log("Found: "+(k==="rounds"?(s.v>=6?"X":s.v):fmt(gid,s))+". Check it below, then "+(k==="rounds"?"Add round.":"Save."));
+  sm.value=k==="time"?Math.floor(s.v/60)+":"+pad(s.v%60):s.f?"X":k==="rounds"&&s.v>=6?"X":String(s.v);if(fl)fl.checked=!!s.fl;up()}catch(e){console.warn(e);log("Couldn't read the screenshot (no connection?). Type the score below.")}};
+ q("#up").onclick=()=>q("#fi").click();
+ q("#fi").onchange=async e=>{const f=e.target.files[0];if(!f)return;img=await loadImg(URL.createObjectURL(f));q("#shot").style.display="block";reg=regFor(gid);draw();run();e.target.value=""};
+ q("#rr").onclick=run;q("#rd").onclick=()=>{reg=REG_DEF[gid]||REG_DEF[GM[gid].k]||REG_DEF.time;const u=JSON.parse(localStorage.getItem("dgreg")||"{}");delete u[gid];localStorage.setItem("dgreg",JSON.stringify(u));draw();run()};
+ const pt=e=>{const b=cv.getBoundingClientRect();return [Math.min(1,Math.max(0,(e.clientX-b.left)/b.width)),Math.min(1,Math.max(0,(e.clientY-b.top)/b.height))]};
+ cv.onpointerdown=e=>{if(!img)return;cv.setPointerCapture(e.pointerId);drag=pt(e)};
+ cv.onpointermove=e=>{if(!drag)return;const p=pt(e);reg=[Math.min(drag[0],p[0]),Math.min(drag[1],p[1]),Math.max(drag[0],p[0]),Math.max(drag[1],p[1])];draw()};
+ cv.onpointerup=()=>{if(!drag)return;drag=null;if(reg[2]-reg[0]<.03||reg[3]-reg[1]<.01){reg=regFor(gid);draw();return}setReg(gid,reg);run()};
+ o.__test={get img(){return img},set img(v){img=v},draw,run,get reg(){return reg},set reg(v){reg=v}}}
 function pickPlayer(){if(document.querySelector(".ov.pick"))return;
  const o=sheet(`<h3>👋 Who are you?</h3><div class="q">${plist().map(p=>`<button data-id="${p.id}">${esc(p.name)}</button>`).join("")}</div>
  <div class="mut">New here? Type your name:</div><input type="text" id="nn" placeholder="Your name"><div class="q"><button class="btn p" id="join">Join</button></div>`);
@@ -254,7 +343,7 @@ async function connect(){if(!FB_CONFIG)return;
    s.docs.forEach(d=>{days[d.id]=d.data()});online=true;saveLocal();render();
    window.__fbReady=true},e=>console.warn(e));
  }catch(e){console.warn("Firebase unavailable, using local only",e);db=null;render()}}
-window.__dg={parseScore,fmt,dayResult,stats,badges,get db(){return db},get fs(){return fs},ROOM};
+window.__dg={prep,ocr,readShot,regFor,ocrParse,REG_DEF,parseScore,fmt,dayResult,stats,badges,get db(){return db},get fs(){return fs},ROOM};
 
 $("tg").onclick=()=>{tab="g";render()};$("tb").onclick=()=>{tab="b";render()};
 $("set").onclick=settings;
