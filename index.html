@@ -390,6 +390,12 @@ function runRules(){if(!window.DGRules||!N.snaps)return;let sn=[];try{sn=JSON.pa
  for(const s of sn.slice().reverse()){if(s.day!==t)continue;for(const r of DGRules.parse(s.lines||[],t)){if(N.submit(JSON.stringify(r)))any=true}}
  N.clearSnaps();if(any)setTimeout(()=>{try{draw()}catch(e){}},500)}
 const _ref=window.__dgNativeRefresh;window.__dgNativeRefresh=()=>{try{runRules()}catch(e){}_ref()};
+
+// v1.4: reset also clears the reader's memory; Settings gets "Copy reader log"
+$("reset").onclick=()=>{if(confirm("Reset today's ticks?")){const k=dkey();GAMES.forEach(g=>{if((pd(k,me).done||{})[g.id])write(k,me,g.id,0)});if(N.resetToday)N.resetToday();draw()}};
+$("set").onclick=()=>{settings();const sh=[...document.querySelectorAll(".ov .sheet")].pop();if(!sh||!N.readerLog)return;
+ const d=document.createElement("div");d.className="q";d.innerHTML=`<button class="btn" id="rlog">📋 Copy reader log</button>`;sh.append(d);
+ d.querySelector("#rlog").onclick=()=>{const t=N.readerLog();if(N.copy)N.copy(t);else if(navigator.clipboard)navigator.clipboard.writeText(t)}};
 setInterval(draw,5000);setTimeout(window.__dgNativeRefresh,1500);
 })();
 </script>
